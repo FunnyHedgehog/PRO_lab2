@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <mpi.h>
 #include <iostream>
 #include <vector>
@@ -16,14 +15,14 @@ using namespace std;
 void firstProcess() {
 	
 	//first task
-	int number_from_console;
+	int numberFromConsole;
 	MPI_Status status;
 	cout << "Enter number for process 1: "<< endl;
-	cin >> number_from_console;
-	MPI_Send(&number_from_console, 1, MPI_INT, SECOND_RANK, TAG, MPI_COMM_WORLD);//відсилає другому
-	number_from_console *= 2;
-	MPI_Send(&number_from_console, 1, MPI_INT, THIRD_RANK, TAG, MPI_COMM_WORLD);
-	MPI_Send(&number_from_console, 1, MPI_INT, FOURTH_RANK, TAG, MPI_COMM_WORLD);
+	cin >> numberFromConsole;
+	MPI_Send(&numberFromConsole, 1, MPI_INT, SECOND_RANK, TAG, MPI_COMM_WORLD);
+	numberFromConsole *= 2;
+	MPI_Send(&numberFromConsole, 1, MPI_INT, THIRD_RANK, TAG, MPI_COMM_WORLD);
+	MPI_Send(&numberFromConsole, 1, MPI_INT, FOURTH_RANK, TAG, MPI_COMM_WORLD);
 	
 	//second task
 	int buf_size = sizeof(TEXT); 
@@ -34,14 +33,13 @@ void firstProcess() {
 	for (int i = 1; i <= 3; i++) {
 		MPI_Bsend(&buf, BUFFER_SIZE, MPI_CHAR, i, TAG, MPI_COMM_WORLD);
 	}
-	cout << "First process send mesagges " << buf << endl;
+	cout << "Process number 0 send mesagges " << buf << endl;
 	MPI_Buffer_detach(&buf, &buf_size);
 	free(buf);
 	
 	//third task
 	double number = 2.0;
 	number *= 3;
-	cout << number << endl;
 	for (int i = 1; i <= 3; i++) {
 		MPI_Ssend(&number, 1, MPI_DOUBLE, i, TAG, MPI_COMM_WORLD);
 	}
@@ -69,54 +67,24 @@ double recieveDoubleNumberFromProcess(MPI_Status *status, int numberOfProcess) {
 	}
 	return number;
 }
-void secondProcess(){
+void runProcess(int rank) {
 	MPI_Status status;
-	recieveNumberFromProcess(&status, SECOND_RANK);
-	recieveStringFromProcess(&status, SECOND_RANK);
-	recieveDoubleNumberFromProcess(&status, SECOND_RANK);
+	recieveNumberFromProcess(&status, rank);
+	recieveStringFromProcess(&status, rank);
+	recieveDoubleNumberFromProcess(&status, rank);
+
 }
-void thirdProcess(){
-	MPI_Status status;
-	recieveNumberFromProcess(&status, THIRD_RANK);
-	recieveStringFromProcess(&status, THIRD_RANK);
-	recieveDoubleNumberFromProcess(&status, THIRD_RANK);
-}
-void fourthProcess(){
-	MPI_Status status;
-	recieveNumberFromProcess(&status, FOURTH_RANK);
-	recieveStringFromProcess(&status, FOURTH_RANK);
-	recieveDoubleNumberFromProcess(&status, FOURTH_RANK);
-}
-//void runProcess(int rank) {
-//	MPI_Status status;
-//	recieveNumberFromProcess(&status, rank);
-//	recieveStringFromProcess(&status, rank);
-//	recieveDoubleNumberFromProcess(&status, rank);
-//
-//}
 int main(int argc, char * argv[]) {
-	MPI_Init(&argc, &argv); int rank, size;
+	MPI_Init(&argc, &argv); 
+	int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
-	//MPI_Status status;
-	switch (rank)
-	{
-	case FIRST_RANK:
+
+	if (rank == FIRST_RANK) {
 		firstProcess();
-		//runProcess(FIRST_RANK);
-		break;
-	case SECOND_RANK:
-		secondProcess();
-		//runProcess(SECOND_RANK);
-		break;
-	case THIRD_RANK:
-		thirdProcess();
-		//runProcess(THIRD_RANK);
-		break;
-	case FOURTH_RANK:
-		fourthProcess();
-		//runProcess(FOURTH_RANK);
-		break;
+	}
+	else {
+		runProcess(rank);
 	}
 	MPI_Finalize();
 	return 0;
