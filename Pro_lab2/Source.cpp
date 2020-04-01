@@ -1,126 +1,122 @@
 #define _CRT_SECURE_NO_WARNINGS
 #include <mpi.h>
 #include <iostream>
-#include <stdio.h>
-#include <time.h>
-#include <Windows.h>
-#define MAX_MESSAGE_SIZE 100
-#define BUFFER_SIZE 100
+#include <vector>
+
+#define TEXT "A life is a moment "
+#define BUFFER_SIZE sizeof(TEXT)
+#define TAG 0
+#define FIRST_RANK 0
+#define SECOND_RANK 1
+#define THIRD_RANK 2
+#define FOURTH_RANK 3
 
 using namespace std;
 
-
-void firstProcess(int *buffer_size, int *message_size) {
-	int TAG = 0;
+void firstProcess() {
+	
+	//first task
 	int number_from_console;
 	MPI_Status status;
 	cout << "Enter number for process 1: "<< endl;
 	cin >> number_from_console;
-
-	MPI_Send(&number_from_console, 1, MPI_INT, 1, TAG, MPI_COMM_WORLD);//відсилає другому
+	MPI_Send(&number_from_console, 1, MPI_INT, SECOND_RANK, TAG, MPI_COMM_WORLD);//відсилає другому
 	number_from_console *= 2;
-	MPI_Send(&number_from_console, 1, MPI_INT, 2, TAG, MPI_COMM_WORLD);
-	MPI_Send(&number_from_console, 1, MPI_INT, 3, TAG, MPI_COMM_WORLD);
-
-	const char * my_message = "A life is a moment";//task2
-	*buffer_size = sizeof(my_message);
-	int buf_size = *buffer_size;
-	char *buf = (char*)malloc(buf_size + MPI_BSEND_OVERHEAD);
-
-	MPI_Buffer_attach(buf, buf_size + MPI_BSEND_OVERHEAD);
-	buf = (char*)my_message;
-	MPI_Bsend(&buf, buf_size, MPI_CHAR, 1, TAG, MPI_COMM_WORLD);
-	cout << "PROCESS #1 SEND MESSAGE " << buf << endl;
-	MPI_Bsend(&buf, buf_size, MPI_CHAR, 2, TAG, MPI_COMM_WORLD);
-	cout << "PROCESS #1 SEND MESSAGE " << buf << endl;
-	MPI_Bsend(&buf, buf_size, MPI_CHAR, 3, TAG, MPI_COMM_WORLD);
-	cout << "PROCESS #1 SEND MESSAGE " << buf << endl;
+	MPI_Send(&number_from_console, 1, MPI_INT, THIRD_RANK, TAG, MPI_COMM_WORLD);
+	MPI_Send(&number_from_console, 1, MPI_INT, FOURTH_RANK, TAG, MPI_COMM_WORLD);
+	
+	//second task
+	int buf_size = sizeof(TEXT); 
+	vector<char> buff(BUFFER_SIZE + MPI_BSEND_OVERHEAD);
+	char* buf = buff.data();
+	MPI_Buffer_attach(buf, BUFFER_SIZE + MPI_BSEND_OVERHEAD);
+	buf = (char*)TEXT;
+	for (int i = 1; i <= 3; i++) {
+		MPI_Bsend(&buf, BUFFER_SIZE, MPI_CHAR, i, TAG, MPI_COMM_WORLD);
+	}
+	cout << "First process send mesagges " << buf << endl;
 	MPI_Buffer_detach(&buf, &buf_size);
 	free(buf);
-
+	
+	//third task
 	double number = 2.0;
 	number *= 3;
 	cout << number << endl;
-	MPI_Ssend(&number, 1, MPI_DOUBLE, 1, TAG,MPI_COMM_WORLD);
-	MPI_Ssend(&number, 1, MPI_DOUBLE, 2, TAG, MPI_COMM_WORLD);
-	MPI_Ssend(&number, 1, MPI_DOUBLE, 3, TAG, MPI_COMM_WORLD);
+	for (int i = 1; i <= 3; i++) {
+		MPI_Ssend(&number, 1, MPI_DOUBLE, i, TAG, MPI_COMM_WORLD);
+	}
 
 }
-void secondProcess(int *buffer_size, int *message_size) {
-	int TAG = 0;
-	int number_from_first_process;
-	MPI_Status status;
-	MPI_Recv(&number_from_first_process, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-	cout << "PROCESS #2 RECEIVE NUMBER FROM PROCESS #1: " << number_from_first_process << endl;
+int recieveNumberFromProcess(MPI_Status *status, int numberOfProcess) {
+	int recievedNumber;
+	MPI_Recv(&recievedNumber, 1, MPI_INT, FIRST_RANK, TAG, MPI_COMM_WORLD, status);
+	cout << "Process number " << numberOfProcess << " receive number from process with rank 0: " << recievedNumber << endl;
+	return recievedNumber;
+}
+char* recieveStringFromProcess(MPI_Status *status, int numberOfProcess) {
+	vector<char> buff(BUFFER_SIZE + MPI_BSEND_OVERHEAD);
+	char* buf = buff.data();
 
-	int buf_size = *buffer_size;
-	char * buf = (char*)malloc(buf_size);
-
-	MPI_Recv(&buf, buf_size, MPI_CHAR, 0, TAG, MPI_COMM_WORLD, &status);//???
-	cout << "PROCESS #2 RECEIVE BUFFER FROM PROCESS #1: " << buf << endl;
-
+	MPI_Recv(&buf, BUFFER_SIZE, MPI_CHAR, FIRST_RANK, TAG, MPI_COMM_WORLD, status);
+	cout << "Process number " << numberOfProcess << " receive message from process with rank 0: " << buf << endl;
+	return buf;
+}
+double recieveDoubleNumberFromProcess(MPI_Status *status, int numberOfProcess) {
 	double number;
-	MPI_Recv(&number, 1, MPI_DOUBLE, 0, TAG,	MPI_COMM_WORLD, &status);
-
+	MPI_Recv(&number, 1, MPI_DOUBLE, FIRST_RANK, TAG, MPI_COMM_WORLD, status);
+	if (numberOfProcess % 2 != 0) {
+		cout << "Process number " << numberOfProcess << " receive double number from process with rank 0: " << number << endl;
+	}
+	return number;
 }
-void thirthProcess(int *buffer_size, int *message_size, char * word) {
-
-	int TAG = 0;
-	int number_from_first_process;
+void secondProcess(){
 	MPI_Status status;
-	MPI_Recv(&number_from_first_process, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-	cout << "PROCESS #3 RECEIVE NUMBER FROM PROCESS #1: " << number_from_first_process << endl;
-
-	int buf_size = *buffer_size;
-	char * buf = (char*)malloc(buf_size);
-
-	MPI_Recv(&buf, buf_size, MPI_CHAR, 0, TAG, MPI_COMM_WORLD, &status);//???
-	cout << "PROCESS #3 RECEIVE BUFFER FROM PROCESS #1: " << buf << endl;
-
-	double number;
-	MPI_Recv(&number, 1, MPI_DOUBLE, 0, TAG, MPI_COMM_WORLD, &status);
-	cout << "PROCESS #3 RECEIVE Number FROM PROCESS #1: " << number << endl;
-
+	recieveNumberFromProcess(&status, SECOND_RANK);
+	recieveStringFromProcess(&status, SECOND_RANK);
+	recieveDoubleNumberFromProcess(&status, SECOND_RANK);
 }
-void fourthProcess(int *buffer_size, int *message_size, char * word) {
-	int TAG = 0;
-	int number_from_first_process;
+void thirdProcess(){
 	MPI_Status status;
-	MPI_Recv(&number_from_first_process, 1, MPI_INT, 0, TAG, MPI_COMM_WORLD, &status);
-	cout << "PROCESS #4 RECEIVE NUMBER FROM PROCESS #1: " << number_from_first_process << endl;
-
-	int buf_size = *buffer_size;
-	char * buf = (char*)malloc(buf_size);
-
-	MPI_Recv(&buf, buf_size, MPI_CHAR, 0, TAG, MPI_COMM_WORLD, &status);//???
-	cout << "PROCESS #4 RECEIVE BUFFER FROM PROCESS #1: " << buf << endl;
-
-	double number;
-	MPI_Recv(&number, 1, MPI_DOUBLE, 0, TAG, MPI_COMM_WORLD, &status);
+	recieveNumberFromProcess(&status, THIRD_RANK);
+	recieveStringFromProcess(&status, THIRD_RANK);
+	recieveDoubleNumberFromProcess(&status, THIRD_RANK);
 }
-
+void fourthProcess(){
+	MPI_Status status;
+	recieveNumberFromProcess(&status, FOURTH_RANK);
+	recieveStringFromProcess(&status, FOURTH_RANK);
+	recieveDoubleNumberFromProcess(&status, FOURTH_RANK);
+}
+//void runProcess(int rank) {
+//	MPI_Status status;
+//	recieveNumberFromProcess(&status, rank);
+//	recieveStringFromProcess(&status, rank);
+//	recieveDoubleNumberFromProcess(&status, rank);
+//
+//}
 int main(int argc, char * argv[]) {
-	int message_size = 4, buffer_size = sizeof("A life is a moment ");
 	MPI_Init(&argc, &argv); int rank, size;
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 	MPI_Comm_size(MPI_COMM_WORLD, &size);
+	//MPI_Status status;
 	switch (rank)
 	{
-	case 0:
-		firstProcess(&buffer_size, &message_size);
+	case FIRST_RANK:
+		firstProcess();
+		//runProcess(FIRST_RANK);
 		break;
-	case 1:
-		secondProcess(&buffer_size, &message_size);
+	case SECOND_RANK:
+		secondProcess();
+		//runProcess(SECOND_RANK);
 		break;
-
-	case 2:
-		thirthProcess(&buffer_size, &message_size, argv[1]);
+	case THIRD_RANK:
+		thirdProcess();
+		//runProcess(THIRD_RANK);
 		break;
-
-	case 3:
-		fourthProcess(&buffer_size, &message_size, argv[1]);
+	case FOURTH_RANK:
+		fourthProcess();
+		//runProcess(FOURTH_RANK);
 		break;
-
 	}
 	MPI_Finalize();
 	return 0;

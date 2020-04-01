@@ -1,4 +1,4 @@
 ﻿  Source.cpp
 c1xx : warning C4199: two-phase name lookup is not supported for C++/CLI, C++/CX, or OpenMP; use /Zc:twoPhase-
-c:\users\sasha\source\repos\pro_lab2\pro_lab2\source.cpp(16): warning C4101: 'status': unreferenced local variable
+c:\users\sasha\source\repos\pro_lab2\pro_lab2\source.cpp(20): warning C4101: 'status': unreferenced local variable
   Pro_lab2.vcxproj -> C:\Users\Sasha\source\repos\Pro_lab2\x64\Debug\Pro_lab2.exe
